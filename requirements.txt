@@ -1,0 +1,33 @@
+# ==============================================================================
+# Vintage Brechó - Python Dependencies
+# Python Target: 3.12+ / 3.14 (Windows / Linux)
+# ==============================================================================
+
+# Core Web Framework & Server
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.8.0
+pydantic-settings>=2.4.0
+python-multipart>=0.0.9
+
+# Database & ORM
+sqlalchemy>=2.0.30
+asyncpg>=0.30.0
+psycopg[binary]>=3.2.0
+aiosqlite>=0.20.0
+greenlet>=3.0.0
+
+# Cloud Services & Payments
+mercadopago>=3.0.0
+supabase>=2.10.0
+
+# HTTP & Environment Configuration
+httpx>=0.27.0
+python-dotenv>=1.0.0
+
+# Model Context Protocol (FastMCP)
+mcp>=1.3.0
+
+# Testing & Concurrency Validation
+pytest>=8.0.0
+pytest-asyncio>=0.24.0

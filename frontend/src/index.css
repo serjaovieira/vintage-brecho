@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-cream: #F6F1E7;
+    --color-sage: #638875;
+    --color-terracotta: #CE724A;
+    --color-wood: #5C3D2E;
+    --color-text: #3A3533;
+  }
+
+  body {
+    background-color: #F6F1E7;
+    color: #3A3533;
+    font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+  }
+
+  h1, h2, h3, h4, .font-vintage-title {
+    font-family: 'Fraunces', 'Playfair Display', Georgia, serif;
+  }
+}
+
+/* Custom delicate vintage scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F6F1E7;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #63887550;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #63887590;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+@keyframes pulseSlow {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.animate-pulse-slow {
+  animation: pulseSlow 2.5s infinite ease-in-out;
+}
