@@ -6,12 +6,16 @@ interface ProductModalProps {
   product: Product | null;
   onClose: () => void;
   onBuyNow: (product: Product) => void;
+  onAddToCart?: (product: Product) => void;
+  isInCart?: boolean;
 }
 
 export const ProductModal: React.FC<ProductModalProps> = ({
   product,
   onClose,
   onBuyNow,
+  onAddToCart,
+  isInCart = false,
 }) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -113,18 +117,35 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             </div>
           </div>
 
-          {/* Action Button */}
-          <div className="mt-8 pt-4 border-t border-vintage-sage/20 space-y-2">
-            <button
-              onClick={() => {
-                onClose();
-                onBuyNow(product);
-              }}
-              className="w-full py-4 px-6 rounded-2xl bg-vintage-terracotta hover:bg-vintage-terracotta-dark text-white font-bold text-base shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 transform active:scale-98"
-            >
-              <QrCode className="w-5 h-5" />
-              <span>Comprar Agora com PIX</span>
-            </button>
+          {/* Action Buttons */}
+          <div className="mt-8 pt-4 border-t border-vintage-sage/20 space-y-2.5">
+            <div className="flex flex-col sm:flex-row gap-2">
+              {onAddToCart && (
+                <button
+                  type="button"
+                  onClick={() => onAddToCart(product)}
+                  className={`py-3.5 px-4 rounded-2xl border font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                    isInCart
+                      ? 'bg-vintage-sage/20 border-vintage-sage text-vintage-sage'
+                      : 'border-vintage-sage/40 hover:border-vintage-sage bg-white text-vintage-wood hover:bg-vintage-sage/10'
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>{isInCart ? 'Na Sacola' : 'Adicionar à Sacola'}</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  onClose();
+                  onBuyNow(product);
+                }}
+                className="grow py-3.5 px-6 rounded-2xl bg-vintage-terracotta hover:bg-vintage-terracotta-dark text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 transform active:scale-98"
+              >
+                <QrCode className="w-5 h-5" />
+                <span>Comprar com PIX</span>
+              </button>
+            </div>
             <p className="text-[11px] text-center text-vintage-text/60">
               Pagamento instantâneo via Mercado Pago • Reserva exclusiva por 10 minutos
             </p>

@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
-import { Eye, QrCode, Sparkles } from 'lucide-react';
+import { Eye, QrCode, Sparkles, ShoppingBag, Check } from 'lucide-react';
 import { Product } from '../services/api';
 
 interface ProductCardProps {
   product: Product;
   onViewDetails: (product: Product) => void;
   onBuyNow: (product: Product) => void;
+  onAddToCart?: (product: Product) => void;
+  isInCart?: boolean;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   onViewDetails,
   onBuyNow,
+  onAddToCart,
+  isInCart = false,
 }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const formattedPrice = Number(product.price).toLocaleString('pt-BR', {
@@ -97,6 +101,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5">
+            {onAddToCart && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToCart(product);
+                }}
+                className={`p-2 sm:px-3 sm:py-2 rounded-xl border text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                  isInCart
+                    ? 'bg-vintage-sage/20 border-vintage-sage text-vintage-sage'
+                    : 'border-vintage-sage/40 hover:border-vintage-sage bg-white text-vintage-wood hover:bg-vintage-sage/10'
+                }`}
+                title={isInCart ? 'Peça já está na sacola' : 'Adicionar à Sacola'}
+                aria-label={isInCart ? 'Peça já está na sacola' : 'Adicionar à Sacola'}
+              >
+                {isInCart ? <Check className="w-4 h-4 text-vintage-sage" /> : <ShoppingBag className="w-4 h-4" />}
+                <span className="hidden sm:inline">{isInCart ? 'Na Sacola' : 'Sacola'}</span>
+              </button>
+            )}
+
             <button
               onClick={() => onBuyNow(product)}
               className="px-3.5 py-2 rounded-xl bg-vintage-terracotta hover:bg-vintage-terracotta-dark text-white text-xs font-bold shadow-sm transition-colors flex items-center gap-1.5"

@@ -104,6 +104,17 @@ async def mercadopago_webhook(request: Request, db: AsyncSession = Depends(get_d
                             "order_id": str(mp_order_id) if is_sqlite else mp_order_id,
                         }
                     )
+                    # Baixa em lote para todos os itens em order_items
+                    items_res = await db.execute(
+                        text("SELECT product_id FROM order_items WHERE order_id = :order_id"),
+                        {"order_id": str(mp_order_id) if is_sqlite else mp_order_id}
+                    )
+                    for item_row in items_res.fetchall():
+                        if item_row[0]:
+                            await db.execute(
+                                text("UPDATE products SET status = 'sold', locked_until = NULL WHERE id = :id"),
+                                {"id": item_row[0]}
+                            )
                 elif mp_product_id:
                     await db.execute(
                         text(
@@ -139,6 +150,16 @@ async def mercadopago_webhook(request: Request, db: AsyncSession = Depends(get_d
                             "order_id": str(mp_order_id) if is_sqlite else mp_order_id,
                         }
                     )
+                    items_res = await db.execute(
+                        text("SELECT product_id FROM order_items WHERE order_id = :order_id"),
+                        {"order_id": str(mp_order_id) if is_sqlite else mp_order_id}
+                    )
+                    for item_row in items_res.fetchall():
+                        if item_row[0]:
+                            await db.execute(
+                                text("UPDATE products SET status = 'available', locked_until = NULL WHERE id = :id AND status = 'locked'"),
+                                {"id": item_row[0]}
+                            )
                 await db.commit()
                 logger.info(f"[Webhook MP] Pagamento {payment_id} com status={mp_status}. Trava liberada se pendente.")
                 return {"status": "ok", "payment_id": str(payment_id), "payment_status": mp_status}
@@ -151,16 +172,29 @@ async def mercadopago_webhook(request: Request, db: AsyncSession = Depends(get_d
         order_row = order_res.mappings().first()
         if order_row:
             p_id = order_row["product_id"]
-            await db.execute(
-                text("UPDATE products SET status = 'sold', locked_until = NULL WHERE id = :id"),
-                {"id": p_id}
+            o_id = order_row["id"]
+            if p_id:
+                await db.execute(
+                    text("UPDATE products SET status = 'sold', locked_until = NULL WHERE id = :id"),
+                    {"id": p_id}
+                )
+            # Baixa em order_items
+            items_res = await db.execute(
+                text("SELECT product_id FROM order_items WHERE order_id = :order_id"),
+                {"order_id": o_id}
             )
+            for item_row in items_res.fetchall():
+                if item_row[0]:
+                    await db.execute(
+                        text("UPDATE products SET status = 'sold', locked_until = NULL WHERE id = :id"),
+                        {"id": item_row[0]}
+                    )
             await db.execute(
                 text("UPDATE orders SET payment_status = 'approved' WHERE mercadopago_payment_id = :mp_id"),
                 {"mp_id": str(payment_id)}
             )
             await db.commit()
-            logger.info(f"[Webhook Local Fallback] Pagamento {payment_id} aprovado para produto {p_id}.")
+            logger.info(f"[Webhook Local Fallback] Pagamento {payment_id} aprovado para pedido {o_id}.")
             return {"status": "ok", "product_id": p_id, "payment_status": "approved"}
 
     return {"status": "ok"}

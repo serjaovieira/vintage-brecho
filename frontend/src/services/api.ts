@@ -16,7 +16,8 @@ export interface Product {
 }
 
 export interface OrderCreate {
-  product_id: number;
+  product_id?: number;
+  product_ids?: number[];
   customer_name?: string;
   customer_email: string;
   customer_phone?: string;
@@ -25,7 +26,9 @@ export interface OrderCreate {
 
 export interface CheckoutResponse {
   order_id: string;
-  product_id: number;
+  product_id?: number;
+  product_ids?: number[];
+  items_count?: number;
   total_amount: number;
   shipping_cost: number;
   product_price: number;
@@ -40,6 +43,12 @@ export interface OrderStatus {
   is_paid: boolean;
   product_title?: string | null;
   product_status?: string | null;
+  items_count?: number;
+  items?: Array<{
+    product_id: number;
+    price_at_purchase: number;
+    product_title?: string;
+  }>;
 }
 
 export interface AdminOrder {
@@ -172,5 +181,23 @@ export const api = {
   async getAdminOrders(): Promise<AdminOrder[]> {
     const res = await fetch(`${API_BASE}/admin/orders`);
     return handleResponse<AdminOrder[]>(res);
+  },
+
+  /**
+   * Admin: Lists all products in the catalog regardless of status.
+   */
+  async getAdminProducts(): Promise<Product[]> {
+    const res = await fetch(`${API_BASE}/admin/products`);
+    return handleResponse<Product[]>(res);
+  },
+
+  /**
+   * Admin: Permanently deletes a product from the database.
+   */
+  async deleteProduct(id: number): Promise<{ status: string; message: string; id: number }> {
+    const res = await fetch(`${API_BASE}/products/${id}`, {
+      method: 'DELETE',
+    });
+    return handleResponse<{ status: string; message: string; id: number }>(res);
   },
 };

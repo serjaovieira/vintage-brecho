@@ -4,10 +4,69 @@ import { ShowcasePage } from './pages/ShowcasePage';
 import { ContactPage } from './pages/ContactPage';
 import { AdminPage } from './pages/AdminPage';
 import { WhatsAppButton } from './components/WhatsAppButton';
+import { CartDrawer } from './components/CartDrawer';
+import { PixCheckoutModal } from './components/PixCheckoutModal';
+import { CelebrationModal } from './components/CelebrationModal';
+import { Product } from './services/api';
 import { Heart, Sparkles, ShieldCheck, Lock } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<'vitrine' | 'contato' | 'admin'>('vitrine');
+
+  // Carrinho de Compras 1-of-1 persistido no localStorage
+  const [cart, setCart] = useState<Product[]>(() => {
+    try {
+      const saved = localStorage.getItem('vintage_brecho_cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [cartCheckoutOpen, setCartCheckoutOpen] = useState(false);
+  const [cartApprovedOrder, setCartApprovedOrder] = useState<{ orderId: string; items: Product[] } | null>(null);
+
+  // Sincronizar carrinho com localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('vintage_brecho_cart', JSON.stringify(cart));
+    } catch (e) {
+      console.warn('Erro ao sincronizar carrinho com localStorage:', e);
+    }
+  }, [cart]);
+
+  const handleAddToCart = (product: Product) => {
+    setCart((prev) => {
+      // 1-of-1: impede duplicatas da mesma peça
+      if (prev.some((p) => p.id === product.id)) return prev;
+      return [...prev, product];
+    });
+    setIsCartOpen(true);
+  };
+
+  const handleRemoveFromCart = (productId: number) => {
+    setCart((prev) => prev.filter((p) => p.id !== productId));
+  };
+
+  const handleClearCart = () => {
+    setCart([]);
+    try {
+      localStorage.removeItem('vintage_brecho_cart');
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleCartCheckout = () => {
+    setIsCartOpen(false);
+    setCartCheckoutOpen(true);
+  };
+
+  const handleCartPaymentApproved = (orderId: string, items: Product[]) => {
+    setCartCheckoutOpen(false);
+    setCartApprovedOrder({ orderId, items });
+    handleClearCart();
+  };
   
   // Controle de autenticação do Admin
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
@@ -77,11 +136,21 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-vintage-cream flex flex-col justify-between selection:bg-vintage-terracotta/20 selection:text-vintage-wood">
       {/* Header */}
-      <Header currentTab={currentTab} onTabChange={handleTabChange} />
+      <Header
+        currentTab={currentTab}
+        onTabChange={handleTabChange}
+        cartCount={cart.length}
+        onOpenCart={() => setIsCartOpen(true)}
+      />
 
       {/* Main Content View */}
       <div className="grow">
-        {currentTab === 'vitrine' && <ShowcasePage />}
+        {currentTab === 'vitrine' && (
+          <ShowcasePage
+            onAddToCart={handleAddToCart}
+            cartProductIds={cart.map((p) => p.id)}
+          />
+        )}
         {currentTab === 'contato' && <ContactPage />}
         
         {currentTab === 'admin' && (
@@ -134,6 +203,33 @@ export const App: React.FC = () => {
           )
         )}
       </div>
+
+      {/* Cart Drawer */}
+      <CartDrawer
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        cart={cart}
+        onRemoveFromCart={handleRemoveFromCart}
+        onCheckout={handleCartCheckout}
+      />
+
+      {/* Cart Multi-Item PIX Checkout Modal */}
+      {cartCheckoutOpen && cart.length > 0 && (
+        <PixCheckoutModal
+          items={cart}
+          onClose={() => setCartCheckoutOpen(false)}
+          onPaymentApproved={handleCartPaymentApproved}
+        />
+      )}
+
+      {/* Cart Approved Order Celebration */}
+      {cartApprovedOrder && (
+        <CelebrationModal
+          orderId={cartApprovedOrder.orderId}
+          items={cartApprovedOrder.items}
+          onClose={() => setCartApprovedOrder(null)}
+        />
+      )}
 
       {/* Floating WhatsApp Action Button */}
       <WhatsAppButton />

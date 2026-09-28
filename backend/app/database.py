@@ -65,45 +65,26 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency yielding an async database session.
     Automatically handles rollback on exception and session closure.
-    Does NOT trigger SQLite fallback on route-level exceptions.
     """
     global _use_fallback, _fallback_engine, _primary_engine
 
-    # Se explicitamente estiver em fallback (definido no init_db)
-    if _use_fallback:
-        fallback_maker = async_sessionmaker(
-            bind=_fallback_engine,
-            class_=AsyncSession,
-            expire_on_commit=False,
-            autocommit=False,
-            autoflush=False,
-        )
-        async with fallback_maker() as session:
-            try:
-                yield session
-            except Exception:
-                await session.rollback()
-                raise
-            finally:
-                await session.close()
-        return
-
-    # Conexão normal com o Supabase (PostgreSQL)
+    selected_engine = _fallback_engine if _use_fallback else _primary_engine
     maker = async_sessionmaker(
-        bind=_primary_engine,
+        bind=selected_engine,
         class_=AsyncSession,
         expire_on_commit=False,
         autocommit=False,
         autoflush=False,
     )
-    async with maker() as session:
-        try:
-            yield session
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
+
+    session = maker()
+    try:
+        yield session
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
 
 
 async def init_db() -> None:
@@ -114,9 +95,9 @@ async def init_db() -> None:
     """
     global _use_fallback, _active_engine, engine
     try:
-        from app.models import Product, Order
+        from app.models import Product, Order, OrderItem
     except ImportError:
-        from backend.app.models import Product, Order
+        from backend.app.models import Product, Order, OrderItem
 
     try:
         async with _primary_engine.begin() as conn:

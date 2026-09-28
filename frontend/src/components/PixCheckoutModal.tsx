@@ -9,20 +9,28 @@ import {
   AlertTriangle,
   Loader2,
   Lock,
+  ShoppingBag,
 } from 'lucide-react';
 import { api, Product, CheckoutResponse, ApiError } from '../services/api';
 
 interface PixCheckoutModalProps {
-  product: Product | null;
+  product?: Product | null;
+  items?: Product[];
   onClose: () => void;
-  onPaymentApproved: (orderId: string, product: Product) => void;
+  onPaymentApproved: (orderId: string, items: Product[]) => void;
 }
 
 export const PixCheckoutModal: React.FC<PixCheckoutModalProps> = ({
   product,
+  items,
   onClose,
   onPaymentApproved,
 }) => {
+  // Resolve items to purchase (either from multi-item array or single product)
+  const activeItems: Product[] = (items && items.length > 0) 
+    ? items 
+    : (product ? [product] : []);
+
   // Step 1: Form; Step 2: PIX Display
   const [step, setStep] = useState<'form' | 'pix'>('form');
 
@@ -82,27 +90,24 @@ export const PixCheckoutModal: React.FC<PixCheckoutModalProps> = ({
         const statusRes = await api.getOrderStatus(checkoutData.order_id);
         if (statusRes.is_paid || statusRes.payment_status === 'approved') {
           if (pollingRef.current) clearInterval(pollingRef.current);
-          if (product) {
-            onPaymentApproved(checkoutData.order_id, product);
-          }
+          onPaymentApproved(checkoutData.order_id, activeItems);
         }
       } catch (err) {
         console.warn('Erro no polling de status:', err);
       }
     };
 
-    // Run first poll after 3 seconds, then repeat every 3s
     pollingRef.current = setInterval(checkStatus, 3000);
 
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
-  }, [step, checkoutData, product, onPaymentApproved]);
+  }, [step, checkoutData, activeItems, onPaymentApproved]);
 
-  if (!product) return null;
+  if (activeItems.length === 0) return null;
 
-  const productPrice = Number(product.price);
-  const totalAmount = productPrice + shippingCost;
+  const itemsSubtotal = activeItems.reduce((acc, p) => acc + Number(p.price), 0);
+  const totalAmount = itemsSubtotal + shippingCost;
 
   const formatTimer = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -124,7 +129,8 @@ export const PixCheckoutModal: React.FC<PixCheckoutModalProps> = ({
 
     try {
       const response = await api.checkoutPix({
-        product_id: product.id,
+        product_ids: activeItems.map((p) => p.id),
+        product_id: activeItems[0]?.id,
         customer_name: name || 'Cliente Vintage',
         customer_email: email,
         customer_phone: phone,
@@ -137,7 +143,8 @@ export const PixCheckoutModal: React.FC<PixCheckoutModalProps> = ({
     } catch (err: unknown) {
       if (err instanceof ApiError && err.status === 409) {
         setErrorMessage(
-          'Esta peça exclusiva já está reservada por outro cliente. Caso o pagamento não seja concluído em 10 minutos, ela voltará a ficar disponível.'
+          err.detail ||
+            'Uma ou mais peças exclusivas já estão reservadas por outro cliente. Caso o pagamento não seja concluído em 10 minutos, elas voltarão a ficar disponíveis.'
         );
       } else if (err instanceof ApiError) {
         setErrorMessage(err.detail || 'Ocorreu um erro ao processar o checkout PIX.');
@@ -161,13 +168,13 @@ export const PixCheckoutModal: React.FC<PixCheckoutModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-vintage-wood/70 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-fade-in">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-vintage-wood/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-fade-in">
       <div
-        className="relative bg-vintage-cream w-full max-w-lg rounded-3xl border border-vintage-sage/30 shadow-2xl overflow-hidden"
+        className="relative bg-vintage-cream w-full max-w-lg rounded-3xl border border-vintage-sage/40 shadow-2xl max-h-[90dvh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="bg-white/80 px-6 py-4 border-b border-vintage-sage/20 flex items-center justify-between">
+        {/* Fixed & Sticky Header with solid opaque background and z-20 */}
+        <div className="sticky top-0 z-20 bg-vintage-cream px-6 py-4 border-b border-vintage-sage/20 flex items-center justify-between shadow-xs shrink-0">
           <div className="flex items-center gap-2">
             <Lock className="w-4 h-4 text-vintage-sage" />
             <h3 className="font-serif text-lg font-bold text-vintage-wood">
@@ -176,7 +183,8 @@ export const PixCheckoutModal: React.FC<PixCheckoutModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-vintage-cream text-vintage-wood/70 hover:text-vintage-wood transition-colors"
+            className="p-1.5 rounded-full bg-white/80 hover:bg-white text-vintage-wood/80 hover:text-vintage-wood transition-colors shadow-xs"
+            aria-label="Fechar modal"
           >
             <X className="w-5 h-5" />
           </button>
@@ -184,45 +192,91 @@ export const PixCheckoutModal: React.FC<PixCheckoutModalProps> = ({
 
         {/* Toast Notification Banner */}
         {toastMessage && (
-          <div className="bg-vintage-sage text-white text-xs font-semibold px-4 py-2.5 text-center flex items-center justify-center gap-2 animate-fade-in shadow-inner">
+          <div className="bg-vintage-sage text-white text-xs font-semibold px-4 py-2.5 text-center flex items-center justify-center gap-2 animate-fade-in shadow-inner shrink-0">
             <Check className="w-4 h-4" />
             <span>{toastMessage}</span>
           </div>
         )}
 
-        <div className="p-6">
+        {/* Scrollable Content Body */}
+        <div className="p-6 overflow-y-auto grow space-y-6">
           {/* Order Summary Mini Bar */}
-          <div className="bg-white rounded-2xl p-4 border border-vintage-sage/20 flex items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-3">
-              <img
-                src={product.image_url}
-                alt={product.title}
-                className="w-14 h-14 rounded-xl object-cover border border-vintage-sage/30"
-              />
-              <div>
-                <h4 className="font-serif font-bold text-sm text-vintage-wood line-clamp-1">
-                  {product.title}
-                </h4>
-                <span className="text-xs text-vintage-sage font-medium block">
-                  Tam {product.size} • Peça Única 1-of-1
-                </span>
-                <span className="text-xs text-vintage-text/70 block">
-                  Peça: R$ {productPrice.toFixed(2)} + Frete: R$ {shippingCost.toFixed(2)}
+          {activeItems.length === 1 ? (
+            <div className="bg-white rounded-2xl p-4 border border-vintage-sage/20 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <img
+                  src={activeItems[0].image_url}
+                  alt={activeItems[0].title}
+                  className="w-14 h-14 rounded-xl object-cover border border-vintage-sage/30"
+                />
+                <div>
+                  <h4 className="font-serif font-bold text-sm text-vintage-wood line-clamp-1">
+                    {activeItems[0].title}
+                  </h4>
+                  <span className="text-xs text-vintage-sage font-medium block">
+                    Tam {activeItems[0].size} • Peça Única 1-of-1
+                  </span>
+                  <span className="text-xs text-vintage-text/70 block">
+                    Peça: R$ {Number(activeItems[0].price).toFixed(2)} + Frete: R$ {shippingCost.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-right shrink-0">
+                <span className="text-[10px] text-vintage-text/60 uppercase block">Total</span>
+                <span className="font-serif text-lg font-bold text-vintage-terracotta">
+                  R$ {totalAmount.toFixed(2)}
                 </span>
               </div>
             </div>
+          ) : (
+            <div className="bg-white rounded-2xl p-4 border border-vintage-sage/20 space-y-3">
+              <div className="flex items-center justify-between border-b border-vintage-sage/15 pb-2">
+                <div className="flex items-center gap-2">
+                  <ShoppingBag className="w-4 h-4 text-vintage-sage" />
+                  <span className="font-serif font-bold text-sm text-vintage-wood">
+                    Pacote ({activeItems.length} peças exclusivas)
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="font-serif text-lg font-bold text-vintage-terracotta">
+                    R$ {totalAmount.toFixed(2)}
+                  </span>
+                </div>
+              </div>
 
-            <div className="text-right">
-              <span className="text-[10px] text-vintage-text/60 uppercase block">Total</span>
-              <span className="font-serif text-lg font-bold text-vintage-terracotta">
-                R$ {totalAmount.toFixed(2)}
-              </span>
+              {/* Thumbnails preview */}
+              <div className="max-h-36 overflow-y-auto space-y-2 pr-1 divide-y divide-vintage-sage/10">
+                {activeItems.map((it) => (
+                  <div key={it.id} className="pt-2 first:pt-0 flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2.5 overflow-hidden">
+                      <img
+                        src={it.image_url}
+                        alt={it.title}
+                        className="w-9 h-9 rounded-lg object-cover border border-vintage-sage/20 shrink-0"
+                      />
+                      <div className="truncate">
+                        <p className="font-medium text-vintage-wood truncate">{it.title}</p>
+                        <span className="text-[10px] text-vintage-sage font-semibold">Tam {it.size}</span>
+                      </div>
+                    </div>
+                    <span className="font-bold text-vintage-wood shrink-0">
+                      R$ {Number(it.price).toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2 border-t border-vintage-sage/15 flex justify-between text-xs text-vintage-text/70">
+                <span>Subtotal ({activeItems.length} peças): R$ {itemsSubtotal.toFixed(2)}</span>
+                <span>Frete fixo único: R$ {shippingCost.toFixed(2)}</span>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Error Message */}
           {errorMessage && (
-            <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm flex items-start gap-3">
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
               <div>
                 <strong className="block font-bold">Aviso Importante:</strong>
@@ -340,7 +394,7 @@ export const PixCheckoutModal: React.FC<PixCheckoutModalProps> = ({
                 ) : (
                   <>
                     <QrCode className="w-5 h-5" />
-                    <span>Gerar Código PIX e Reservar Peça</span>
+                    <span>Gerar Código PIX e Reservar {activeItems.length > 1 ? `${activeItems.length} Peças` : 'Peça'}</span>
                   </>
                 )}
               </button>
@@ -369,7 +423,7 @@ export const PixCheckoutModal: React.FC<PixCheckoutModalProps> = ({
 
               {timeLeft === 0 ? (
                 <div className="p-4 rounded-2xl bg-red-50 text-red-700 border border-red-200 text-xs">
-                  O tempo de reserva exclusiva expirou. A peça voltou para a vitrine.
+                  O tempo de reserva exclusiva expirou. As peças voltaram para a vitrine.
                 </div>
               ) : (
                 <>

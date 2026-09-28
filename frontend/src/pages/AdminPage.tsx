@@ -11,14 +11,18 @@ import {
   MessageCircle,
   RefreshCw,
   Tag,
+  Trash2,
+  Boxes,
+  AlertTriangle,
+  X,
 } from 'lucide-react';
-import { api, AdminOrder } from '../services/api';
+import { api, AdminOrder, Product } from '../services/api';
 import { compressImage, uploadToSupabaseStorage, CompressionResult } from '../services/imageCompression';
 
 const PRESET_SIZES = ['PP', 'P', 'M', 'G', 'GG', '36', '38', '40', '42', '44', 'Único'];
 
 export const AdminPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'novo' | 'despacho'>('novo');
+  const [activeTab, setActiveTab] = useState<'novo' | 'catalogo' | 'despacho'>('novo');
 
   // Product Form State
   const [title, setTitle] = useState('');
@@ -40,6 +44,12 @@ export const AdminPage: React.FC = () => {
   // Orders State
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+
+  // Catalog / Manage Products State
+  const [adminProducts, setAdminProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load existing categories
   useEffect(() => {
@@ -73,11 +83,45 @@ export const AdminPage: React.FC = () => {
     }
   };
 
+  // Load all products for catalog management
+  const loadAdminProducts = async () => {
+    setIsLoadingProducts(true);
+    try {
+      const data = await api.getAdminProducts();
+      setAdminProducts(data);
+    } catch (err) {
+      console.warn('Erro ao carregar produtos no admin:', err);
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'despacho') {
       loadOrders();
+    } else if (activeTab === 'catalogo') {
+      loadAdminProducts();
     }
   }, [activeTab]);
+
+  // Handle Permanent Deletion of a Product
+  const handleConfirmDelete = async () => {
+    if (!productToDelete) return;
+    setIsDeleting(true);
+    setErrorMessage(null);
+    try {
+      await api.deleteProduct(productToDelete.id);
+      setAdminProducts((prev) => prev.filter((p) => p.id !== productToDelete.id));
+      setSuccessToast(`Peça "${productToDelete.title}" excluída permanentemente com sucesso.`);
+      setProductToDelete(null);
+      setTimeout(() => setSuccessToast(null), 5000);
+    } catch (err: unknown) {
+      console.error('Erro ao excluir peça permanentemente:', err);
+      setErrorMessage('Não foi possível excluir a peça. Tente novamente.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Handle Photo Capture or Upload
   const handleImageFile = async (file: File) => {
@@ -187,29 +231,41 @@ export const AdminPage: React.FC = () => {
       </div>
 
       {/* Segmented Control Tabs */}
-      <div className="bg-vintage-cream-light p-1 rounded-2xl border border-vintage-sage/30 grid grid-cols-2 gap-1 shadow-xs">
+      <div className="bg-vintage-cream-light p-1 rounded-2xl border border-vintage-sage/30 grid grid-cols-3 gap-1 shadow-xs">
         <button
           onClick={() => setActiveTab('novo')}
-          className={`py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
+          className={`py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
             activeTab === 'novo'
               ? 'bg-vintage-wood text-white shadow-sm'
               : 'text-vintage-wood/70 hover:text-vintage-wood'
           }`}
         >
           <PackagePlus className="w-4 h-4" />
-          <span>Nova Peça 1-of-1</span>
+          <span>Nova Peça</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('catalogo')}
+          className={`py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
+            activeTab === 'catalogo'
+              ? 'bg-vintage-wood text-white shadow-sm'
+              : 'text-vintage-wood/70 hover:text-vintage-wood'
+          }`}
+        >
+          <Boxes className="w-4 h-4" />
+          <span>Estoque ({adminProducts.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('despacho')}
-          className={`py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
+          className={`py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
             activeTab === 'despacho'
               ? 'bg-vintage-wood text-white shadow-sm'
               : 'text-vintage-wood/70 hover:text-vintage-wood'
           }`}
         >
           <Truck className="w-4 h-4" />
-          <span>Pedidos & Despacho</span>
+          <span>Despacho</span>
         </button>
       </div>
 
@@ -565,6 +621,211 @@ export const AdminPage: React.FC = () => {
             </div>
           )}
         </section>
+      )}
+
+      {/* TAB 3: CATÁLOGO & EXCLUSÃO PERMANENTE */}
+      {activeTab === 'catalogo' && (
+        <section aria-label="Catálogo e Estoque de Peças" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-vintage-wood">
+              {adminProducts.length} peças cadastradas no total
+            </span>
+            <button
+              onClick={loadAdminProducts}
+              disabled={isLoadingProducts}
+              className="p-2 rounded-xl border border-vintage-sage/30 hover:bg-white text-vintage-wood text-xs flex items-center gap-1 shadow-xs"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoadingProducts ? 'animate-spin' : ''}`} />
+              <span>Atualizar</span>
+            </button>
+          </div>
+
+          {isLoadingProducts && (
+            <div className="py-12 text-center text-vintage-sage flex items-center justify-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-xs">Carregando catálogo de peças...</span>
+            </div>
+          )}
+
+          {!isLoadingProducts && adminProducts.length === 0 && (
+            <div className="bg-white rounded-3xl p-8 border border-vintage-sage/30 text-center space-y-3">
+              <Boxes className="w-10 h-10 mx-auto text-vintage-sage/50" />
+              <h3 className="font-serif font-bold text-vintage-wood">Nenhuma peça no catálogo</h3>
+              <p className="text-xs text-vintage-text/70">
+                Cadastre peças 1-of-1 na aba "Nova Peça" para exibi-las na vitrine.
+              </p>
+            </div>
+          )}
+
+          {!isLoadingProducts && adminProducts.length > 0 && (
+            <div className="space-y-3">
+              {adminProducts.map((prod) => {
+                const isSold = prod.status === 'sold';
+                const isLocked = prod.status === 'locked';
+
+                return (
+                  <div
+                    key={prod.id}
+                    className="bg-white rounded-2xl p-4 border border-vintage-sage/30 shadow-vintage-soft flex items-center gap-3.5 transition-all hover:border-vintage-sage/50"
+                  >
+                    {/* Thumbnail */}
+                    <img
+                      src={prod.image_url}
+                      alt={prod.title}
+                      className="w-16 h-20 rounded-xl object-cover border border-vintage-sage/25 shrink-0"
+                    />
+
+                    {/* Details */}
+                    <div className="grow min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-vintage-sage uppercase tracking-wider truncate">
+                          {prod.category}
+                        </span>
+                        <span className="text-[10px] text-vintage-text/40 font-mono">
+                          #{prod.id}
+                        </span>
+                      </div>
+
+                      <h4 className="font-serif font-bold text-sm text-vintage-wood truncate">
+                        {prod.title}
+                      </h4>
+
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-vintage-text/80">
+                          Tam: <strong>{prod.size}</strong>
+                        </span>
+                        <span className="text-xs text-vintage-terracotta font-bold font-serif">
+                          R$ {Number(prod.price).toFixed(2)}
+                        </span>
+                      </div>
+
+                      {/* Status Badge */}
+                      <div className="mt-1.5">
+                        {isSold ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-700 border border-zinc-200">
+                            Vendido
+                          </span>
+                        ) : isLocked ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-200">
+                            Reservado (PIX em andamento)
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            Disponível na vitrine
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Delete Action Button */}
+                    <div className="shrink-0 pl-1">
+                      <button
+                        type="button"
+                        onClick={() => setProductToDelete(prod)}
+                        className="p-2.5 rounded-xl text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 hover:border-rose-400 transition-colors shadow-xs"
+                        title="Excluir peça permanentemente"
+                        aria-label={`Excluir peça ${prod.title}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO PERMANENTE */}
+      {productToDelete && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-vintage-wood/75 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div
+            className="relative bg-vintage-cream w-full max-w-md rounded-3xl border border-vintage-sage/40 shadow-2xl p-6 sm:p-7 space-y-5 animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header com ícone de alerta e botão fechar */}
+            <div className="flex items-start justify-between gap-3.5">
+              <div className="flex items-start gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-rose-100 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-serif font-bold text-lg text-vintage-wood">
+                    Excluir Peça Permanentemente
+                  </h3>
+                  <span className="text-[11px] text-rose-700 font-semibold uppercase tracking-wider block">
+                    Ação Irreversível
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setProductToDelete(null)}
+                className="p-1.5 rounded-full hover:bg-vintage-sage/15 text-vintage-wood/70 transition-colors"
+                aria-label="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Mensagem solicitada */}
+            <p className="text-xs sm:text-sm text-vintage-text/85 leading-relaxed bg-white/70 p-3.5 rounded-2xl border border-vintage-sage/20">
+              Tem certeza que deseja excluir esta peça permanentemente? Essa ação não pode ser desfeita.
+            </p>
+
+            {/* Card com dados da peça selecionada */}
+            <div className="bg-white rounded-2xl p-3.5 border border-vintage-sage/25 flex items-center gap-3">
+              <img
+                src={productToDelete.image_url}
+                alt={productToDelete.title}
+                className="w-14 h-14 rounded-xl object-cover border border-vintage-sage/30 shrink-0"
+              />
+              <div className="overflow-hidden grow min-w-0">
+                <span className="text-[10px] font-bold text-vintage-sage uppercase tracking-wider block">
+                  {productToDelete.category} • Tam {productToDelete.size}
+                </span>
+                <h4 className="font-serif font-bold text-sm text-vintage-wood truncate">
+                  {productToDelete.title}
+                </h4>
+                <span className="font-serif text-xs font-bold text-vintage-terracotta block mt-0.5">
+                  R$ {Number(productToDelete.price).toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* Botões de Ação */}
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setProductToDelete(null)}
+                disabled={isDeleting}
+                className="w-1/2 py-3 px-4 rounded-xl border border-vintage-sage/40 hover:bg-vintage-sage/10 text-vintage-wood font-semibold text-xs transition-colors"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="w-1/2 py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Excluindo...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Excluir Peça</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

@@ -57,16 +57,36 @@ class ProductDetailOut(ProductOut):
 
 
 class OrderCreate(BaseModel):
-    product_id: int
+    product_id: Optional[int] = Field(None, description="ID de produto individual (compatibilidade retroativa)")
+    product_ids: Optional[list[int]] = Field(None, description="Lista de IDs de produtos para compra multi-item")
     customer_name: Optional[str] = Field(None, max_length=255)
     customer_email: str = Field(..., max_length=255)
     customer_phone: Optional[str] = Field(None, max_length=50)
     customer_address: Optional[str] = None
 
+    def get_product_ids(self) -> list[int]:
+        """Retorna lista única e ordenada de IDs de produtos."""
+        if self.product_ids:
+            return list(dict.fromkeys(self.product_ids))
+        if self.product_id:
+            return [self.product_id]
+        return []
+
+
+class OrderItemOut(BaseModel):
+    id: int
+    product_id: Optional[int]
+    price_at_purchase: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 class CheckoutResponse(BaseModel):
     order_id: str
-    product_id: int
+    product_id: Optional[int] = None
+    product_ids: list[int] = []
+    items_count: int = 1
+    products_count: int = 1
     total_amount: Decimal
     shipping_cost: Decimal = Decimal("15.00")
     product_price: Decimal
@@ -81,6 +101,8 @@ class OrderStatusOut(BaseModel):
     is_paid: bool
     product_title: Optional[str] = None
     product_status: Optional[str] = None
+    items_count: Optional[int] = None
+    items: Optional[list[dict[str, Any]]] = None
 
 
 class HealthCheckOut(BaseModel):

@@ -7,7 +7,15 @@ import { ProductModal } from '../components/ProductModal';
 import { PixCheckoutModal } from '../components/PixCheckoutModal';
 import { CelebrationModal } from '../components/CelebrationModal';
 
-export const ShowcasePage: React.FC = () => {
+interface ShowcasePageProps {
+  onAddToCart?: (product: Product) => void;
+  cartProductIds?: number[];
+}
+
+export const ShowcasePage: React.FC<ShowcasePageProps> = ({
+  onAddToCart,
+  cartProductIds = [],
+}) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('Todas as Peças');
@@ -18,7 +26,7 @@ export const ShowcasePage: React.FC = () => {
   // Modals state
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [checkoutProduct, setCheckoutProduct] = useState<Product | null>(null);
-  const [approvedOrder, setApprovedOrder] = useState<{ orderId: string; product: Product } | null>(
+  const [approvedOrder, setApprovedOrder] = useState<{ orderId: string; items: Product[] } | null>(
     null
   );
 
@@ -64,10 +72,10 @@ export const ShowcasePage: React.FC = () => {
     setIsRefreshing(false);
   };
 
-  const handlePaymentApproved = (orderId: string, product: Product) => {
+  const handlePaymentApproved = (orderId: string, items: Product[]) => {
     setCheckoutProduct(null);
     setSelectedProduct(null);
-    setApprovedOrder({ orderId, product });
+    setApprovedOrder({ orderId, items });
     // Refresh showcase so the sold item disappears immediately
     handleRefresh();
   };
@@ -193,6 +201,8 @@ export const ShowcasePage: React.FC = () => {
                 product={product}
                 onViewDetails={(p) => setSelectedProduct(p)}
                 onBuyNow={(p) => setCheckoutProduct(p)}
+                onAddToCart={onAddToCart}
+                isInCart={cartProductIds.includes(product.id)}
               />
             ))}
           </div>
@@ -208,6 +218,8 @@ export const ShowcasePage: React.FC = () => {
             setSelectedProduct(null);
             setCheckoutProduct(p);
           }}
+          onAddToCart={onAddToCart}
+          isInCart={cartProductIds.includes(selectedProduct.id)}
         />
       )}
 
@@ -222,7 +234,7 @@ export const ShowcasePage: React.FC = () => {
       {approvedOrder && (
         <CelebrationModal
           orderId={approvedOrder.orderId}
-          product={approvedOrder.product}
+          items={approvedOrder.items}
           onClose={() => setApprovedOrder(null)}
         />
       )}

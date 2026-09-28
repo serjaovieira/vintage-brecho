@@ -145,3 +145,79 @@ async def create_product(product_in: ProductCreate, db: AsyncSession = Depends(g
     new_product = result.mappings().first()
     await db.commit()
     return dict(new_product)
+
+
+@router.delete("/products/{product_id}", status_code=status.HTTP_200_OK)
+async def delete_product(product_id: int, db: AsyncSession = Depends(get_db)):
+    """
+    Remove permanentemente uma peça do catálogo do brechó.
+    Trata chaves estrangeiras com segurança:
+    - Atualiza referências em orders e order_items para NULL, preservando o histórico de vendas.
+    - Exclui o registro da peça da tabela products.
+    """
+    # 1. Verifica se o produto existe
+    check_sql = text("SELECT id, title FROM products WHERE id = :id")
+    res = await db.execute(check_sql, {"id": product_id})
+    product = res.mappings().first()
+
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Produto não encontrado para exclusão."
+        )
+
+    # 2. Desvincula com segurança chaves estrangeiras em pedidos históricos
+    bind = db.bind
+    is_sqlite = bind is not None and bind.dialect.name == "sqlite"
+
+    try:
+        await db.execute(
+            text("UPDATE order_items SET product_id = NULL WHERE product_id = :id"),
+            {"id": product_id}
+        )
+    except Exception as exc:
+        pass
+
+    try:
+        await db.execute(
+            text("UPDATE orders SET product_id = NULL WHERE product_id = :id"),
+            {"id": product_id}
+        )
+    except Exception as exc:
+        pass
+
+    if is_sqlite:
+        await db.execute(text("PRAGMA foreign_keys = OFF;"))
+
+    # 3. Remove a peça da tabela products
+    await db.execute(
+        text("DELETE FROM products WHERE id = :id"),
+        {"id": product_id}
+    )
+
+    if is_sqlite:
+        await db.execute(text("PRAGMA foreign_keys = ON;"))
+
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Peça '{product['title']}' excluída permanentemente.",
+        "id": product_id,
+    }
+
+
+@router.get("/admin/products", response_model=List[ProductOut])
+async def list_admin_products(db: AsyncSession = Depends(get_db)):
+    """
+    Retorna TODAS as peças (disponíveis, reservadas e vendidas) para o catálogo do painel admin.
+    Permite ao lojista visualizar o status de cada peça e executar a exclusão.
+    """
+    sql = """
+        SELECT id, title, category, description, size, price, image_url, status, locked_until, created_at
+        FROM products
+        ORDER BY id DESC;
+    """
+    result = await db.execute(text(sql))
+    rows = result.mappings().all()
+    return [dict(r) for r in rows]
