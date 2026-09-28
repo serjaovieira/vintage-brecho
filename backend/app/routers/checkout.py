@@ -29,7 +29,7 @@ router = APIRouter(tags=["checkout"])
 logger = logging.getLogger("vintage_brecho.checkout")
 
 # QR Code real de teste estilizado em Base64
-MOCK_QR_CODE_BASE64 = (
+MOCK_QR_BASE64 = (
     "iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAAACXBIWXMAAA7EAAAOxAGVKw4b"
     "AAAFoElEQVR4nO3dQY7bRhBF0a7A/W952wUCBJq0W31U/Z5zkhx084gkuqf+u30e57z8990F"
     "Pld/+wJ8vgReJ4HXSeB1EnidBF4ngddJ4HUSEPjrF/j+V/r5Enhd9v55nPO1C5x9f4D39U/g"
