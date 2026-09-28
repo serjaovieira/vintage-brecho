@@ -5,9 +5,12 @@ Implements:
 - GET /api/orders/{order_id}/status: Polling order status for celebratory redirect.
 """
 
+import base64
 from decimal import Decimal
 import logging
 from typing import Optional
+import urllib.parse
+import urllib.request
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -28,35 +31,19 @@ except ImportError:
 router = APIRouter(tags=["checkout"])
 logger = logging.getLogger("vintage_brecho.checkout")
 
-# QR Code real de teste estilizado em Base64
-MOCK_QR_BASE64 = (
-    "iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAAACXBIWXMAAA7EAAAOxAGVKw4b"
-    "AAAFoElEQVR4nO3dQY7bRhBF0a7A/W952wUCBJq0W31U/Z5zkhx084gkuqf+u30e57z8990F"
-    "Pld/+wJ8vgReJ4HXSeB1EnidBF4ngddJ4HUSEPjrF/j+V/r5Enhd9v55nPO1C5x9f4D39U/g"
-    "dRJ4nQReJ4HXSeB1EnidBF4ngdfJ3j+PczqB470T+D7/BF4ngddJ4HUSEHidBF4ngddJ4HUS"
-    "eJ0EXieB10ngdQoI/P7/qfF/1ZfA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOtk75/HOZ3A8d4J"
-    "fJ9/Aq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrFBD4/f9T4/+qL4HXiY/nBH5MAq+TwOsk"
-    "8DoJvE4Cr5PA6yTwOgm8TvZ+eZx1/19wAu9d4Pvn/R8EXieB10ngdRJ4nQReJ4HXSeB1Enid"
-    "BF4ngddp/t6PwPfxT+B1EnidBF4ngddJ4HUS+DkE/nI/7v3zOOdrb4HXSeB1EnidBF4ngddJ"
-    "4HUS+DkJ/FwCr5PA6yTwOgm8TgKvk8DrJPA6CbxOAu+dwOsk8DoJvE4Cr5PA6yTwOgm8TgKv"
-    "k8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4C"
-    "r5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxO"
-    "Aq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8"
-    "TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJ"
-    "vE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6"
-    "CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTw"
-    "Ogm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk"
-    "8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8Dr"
-    "JPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA"
-    "6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+T"
-    "wOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKv"
-    "k8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4C"
-    "r5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxO"
-    "Aq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8"
-    "TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJ"
-    "vE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8Dr/ANw"
-    "Cg9G2m15uAAAAABJRU5ErkJggg=="
-)
+
+def gerar_qr_code_base64(conteudo_pix: str) -> str:
+    """Busca a imagem do QR Code renderizada para o texto do PIX e converte para Base64."""
+    try:
+        # Codifica caracteres especiais e espaços da string PIX
+        dados_codificados = urllib.parse.quote(conteudo_pix)
+        url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={dados_codificados}"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            return base64.b64encode(response.read()).decode("utf-8")
+    except Exception as exc:
+        logger.warning(f"Aviso: Não foi possível obter QR Code da API externa ({exc}).")
+        return ""
 
 
 @router.post("/checkout/pix", response_model=CheckoutResponse, status_code=status.HTTP_201_CREATED)
@@ -65,29 +52,28 @@ async def checkout_pix(payload: OrderCreate, db: AsyncSession = Depends(get_db))
     Inicia o checkout transparente com PIX simulado (Modo de Teste):
     1. Executa a trava atômica de 10 minutos na peça unitária.
     2. Adiciona a taxa fixa de frete de R$ 15,00.
-    3. Mocka o retorno do PIX (Copia-e-Cola e QR Code).
+    3. Gera o código Pix Copia-e-Cola e a imagem em Base64.
     4. Registra o pedido na tabela orders no Supabase.
     """
-    # 1. Acquire atomic 10-minute reservation lock
+    # 1. Trava atômica de 10 minutos
     product = await acquire_product_lock(db, payload.product_id)
 
-    # 2. Shipping calculation
+    # 2. Cálculo dos valores
     product_price = Decimal(str(product["price"]))
     shipping_cost = Decimal(str(settings.FIXED_SHIPPING_PRICE))
     total_amount = product_price + shipping_cost
 
-    # 3. MOCK DO MERCADO PAGO (Simulação segura para testes locais e em nuvem)
+    # 3. Geração dos identificadores e dados do PIX mockado
     order_id = uuid.uuid4()
     mercadopago_payment_id = f"mock_mp_{order_id.hex[:10]}"
-    
-    # Código Pix Copia-e-Cola simulado para testar o botão de cópia
-    qr_code = (
-        f"00020126580014br.gov.bcb.pix0136vintage-brecho-teste-pix520400005303986"
-        f"540{float(total_amount):.2f}5802BR5914VINTAGE BRECHO6009SAO PAULO62070503***6304TEST"
-    )
-    qr_code_base64 = MOCK_QR_BASE64
 
-    # 4. Gravação do pedido no banco de dados
+    qr_code = (
+        f"00020126580014br.gov.bcb.pix0136vintage-brecho-teste-pix"
+        f"520400005303986540{float(total_amount):.2f}5802BR5914VINTAGE BRECHO6009SAO PAULO62070503***6304TEST"
+    )
+    qr_code_base64 = gerar_qr_code_base64(qr_code)
+
+    # 4. Gravação do pedido na tabela orders
     try:
         bind = db.bind
         is_sqlite = bind is not None and bind.dialect.name == "sqlite"
