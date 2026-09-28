@@ -1,7 +1,7 @@
 """
 Checkout Router for Vintage Brechó API.
 Implements:
-- POST /api/checkout/pix: Transparent PIX checkout with atomic 10-minute lock.
+- POST /api/checkout/pix: Transparent PIX checkout with atomic 10-minute lock (Mocked for testing).
 - GET /api/orders/{order_id}/status: Polling order status for celebratory redirect.
 """
 
@@ -19,27 +19,29 @@ try:
     from app.database import get_db
     from app.schemas import CheckoutResponse, OrderCreate, OrderStatusOut
     from app.services.lock_service import acquire_product_lock, release_product_lock
-    from app.services.mercadopago_service import create_pix_payment
 except ImportError:
     from backend.app.config import settings
     from backend.app.database import get_db
     from backend.app.schemas import CheckoutResponse, OrderCreate, OrderStatusOut
     from backend.app.services.lock_service import acquire_product_lock, release_product_lock
-    from backend.app.services.mercadopago_service import create_pix_payment
 
 router = APIRouter(tags=["checkout"])
 logger = logging.getLogger("vintage_brecho.checkout")
+
+# Imagem PNG 1x1 pixel válida em Base64 para simular o QR Code na interface sem estourar erro
+MOCK_QR_BASE64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+)
 
 
 @router.post("/checkout/pix", response_model=CheckoutResponse, status_code=status.HTTP_201_CREATED)
 async def checkout_pix(payload: OrderCreate, db: AsyncSession = Depends(get_db)):
     """
-    Inicia o checkout transparente com PIX:
-    1. Executa a trava atômica de 10 minutos na peça unitária (ou levanta HTTP 409 Conflict).
+    Inicia o checkout transparente com PIX simulado (Modo de Teste):
+    1. Executa a trava atômica de 10 minutos na peça unitária.
     2. Adiciona a taxa fixa de frete de R$ 15,00.
-    3. Chama o serviço Mercado Pago para criar pagamento PIX com X-Idempotency-Key e metadata.
-    4. Registra o pedido na tabela orders com o ID de pagamento gerado.
-    5. Retorna o código PIX Copia-e-Cola, QR Code base64 e tempo de expiração de 10 minutos.
+    3. Mocka o retorno do PIX (Copia-e-Cola e QR Code).
+    4. Registra o pedido na tabela orders no Supabase.
     """
     # 1. Acquire atomic 10-minute reservation lock
     product = await acquire_product_lock(db, payload.product_id)
@@ -49,19 +51,18 @@ async def checkout_pix(payload: OrderCreate, db: AsyncSession = Depends(get_db))
     shipping_cost = Decimal(str(settings.FIXED_SHIPPING_PRICE))
     total_amount = product_price + shipping_cost
 
-    # 3. Create order ID and generate PIX via Mercado Pago service
+    # 3. MOCK DO MERCADO PAGO (Simulação segura para testes locais e em nuvem)
     order_id = uuid.uuid4()
-    payment_info = await create_pix_payment(
-        product_id=payload.product_id,
-        total_amount=total_amount,
-        customer_email=payload.customer_email,
-        customer_name=payload.customer_name or "Cliente Vintage",
-        order_id=order_id,
+    mercadopago_payment_id = f"mock_mp_{order_id.hex[:10]}"
+    
+    # Código Pix Copia-e-Cola simulado para testar o botão de cópia
+    qr_code = (
+        f"00020126580014br.gov.bcb.pix0136vintage-brecho-teste-pix520400005303986"
+        f"540{float(total_amount):.2f}5802BR5914VINTAGE BRECHO6009SAO PAULO62070503***6304TEST"
     )
-    qr_code = payment_info["qr_code"]
-    qr_code_base64 = payment_info["qr_code_base64"]
-    mercadopago_payment_id = payment_info.get("payment_id") or f"mp_{order_id.hex[:12]}"
+    qr_code_base64 = MOCK_QR_BASE64
 
+    # 4. Gravação do pedido no banco de dados
     try:
         bind = db.bind
         is_sqlite = bind is not None and bind.dialect.name == "sqlite"
@@ -92,7 +93,7 @@ async def checkout_pix(payload: OrderCreate, db: AsyncSession = Depends(get_db))
         )
         await db.commit()
     except Exception as exc:
-        logger.error(f"Erro ao salvar pedido, liberando trava: {exc}")
+        logger.error(f"Erro ao salvar pedido, liberando trava da peça: {exc}")
         await release_product_lock(db, payload.product_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
