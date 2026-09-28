@@ -28,9 +28,34 @@ except ImportError:
 router = APIRouter(tags=["checkout"])
 logger = logging.getLogger("vintage_brecho.checkout")
 
-# Imagem PNG 1x1 pixel válida em Base64 para simular o QR Code na interface sem estourar erro
-MOCK_QR_BASE64 = (
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+# QR Code real de teste estilizado em Base64
+MOCK_QR_CODE_BASE64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAAACXBIWXMAAA7EAAAOxAGVKw4b"
+    "AAAFoElEQVR4nO3dQY7bRhBF0a7A/W952wUCBJq0W31U/Z5zkhx084gkuqf+u30e57z8990F"
+    "Pld/+wJ8vgReJ4HXSeB1EnidBF4ngddJ4HUSEPjrF/j+V/r5Enhd9v55nPO1C5x9f4D39U/g"
+    "dRJ4nQReJ4HXSeB1EnidBF4ngdfJ3j+PczqB470T+D7/BF4ngddJ4HUSEHidBF4ngddJ4HUS"
+    "eJ0EXieB10ngdQoI/P7/qfF/1ZfA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOtk75/HOZ3A8d4J"
+    "fJ9/Aq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrFBD4/f9T4/+qL4HXiY/nBH5MAq+TwOsk"
+    "8DoJvE4Cr5PA6yTwOgm8TvZ+eZx1/19wAu9d4Pvn/R8EXieB10ngdRJ4nQReJ4HXSeB1Enid"
+    "BF4ngddp/t6PwPfxT+B1EnidBF4ngddJ4HUS+DkE/nI/7v3zOOdrb4HXSeB1EnidBF4ngddJ"
+    "4HUS+DkJ/FwCr5PA6yTwOgm8TgKvk8DrJPA6CbxOAu+dwOsk8DoJvE4Cr5PA6yTwOgm8TgKv"
+    "k8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4C"
+    "r5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxO"
+    "Aq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8"
+    "TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJ"
+    "vE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6"
+    "CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTw"
+    "Ogm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk"
+    "8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8Dr"
+    "JPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA"
+    "6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+T"
+    "wOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKv"
+    "k8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4C"
+    "r5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxO"
+    "Aq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8"
+    "TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJ"
+    "vE4Cr5PA6yTwOgm8TgKvk8DrJPA6CbxOAq+TwOsk8DoJvE4Cr5PA6yTwOgm8TgKvk8Dr/ANw"
+    "Cg9G2m15uAAAAABJRU5ErkJggg=="
 )
 
 
