@@ -17,7 +17,7 @@ export const App: React.FC = () => {
   const [authError, setAuthError] = useState(false);
 
   // Defina sua senha aqui
-  const ADMIN_PASSWORD = 'vintagebrecho2026';
+  const ADMIN_PASSWORD = 'admin123';
 
   // Handle URL navigation (support both hash routing and pathname)
   useEffect(() => {

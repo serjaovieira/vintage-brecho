@@ -83,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-vintage-terracotta rounded-full" />
               )}
             </button>
-
+              {/*
             <button
               onClick={() => handleNav('admin')}
               className={`text-xs px-3.5 py-1.5 rounded-full border border-vintage-sage/40 transition-all duration-150 flex items-center gap-1.5 ${
@@ -95,6 +95,7 @@ export const Header: React.FC<HeaderProps> = ({
               <ShieldCheck className="w-3.5 h-3.5 text-vintage-sage" />
               Painel Lojista
             </button>
+              */}
 
             {/* Sacola Action Button */}
             <button
