@@ -4,10 +4,20 @@ import { ShowcasePage } from './pages/ShowcasePage';
 import { ContactPage } from './pages/ContactPage';
 import { AdminPage } from './pages/AdminPage';
 import { WhatsAppButton } from './components/WhatsAppButton';
-import { Heart, Sparkles, ShieldCheck } from 'lucide-react';
+import { Heart, Sparkles, ShieldCheck, Lock } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<'vitrine' | 'contato' | 'admin'>('vitrine');
+  
+  // Controle de autenticação do Admin
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
+    return sessionStorage.getItem('admin_auth') === 'true';
+  });
+  const [passwordInput, setPasswordInput] = useState('');
+  const [authError, setAuthError] = useState(false);
+
+  // Defina sua senha aqui
+  const ADMIN_PASSWORD = 'vintagebrecho2026';
 
   // Handle URL navigation (support both hash routing and pathname)
   useEffect(() => {
@@ -46,6 +56,24 @@ export const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordInput === ADMIN_PASSWORD) {
+      setIsAdminAuthenticated(true);
+      sessionStorage.setItem('admin_auth', 'true');
+      setAuthError(false);
+      setPasswordInput('');
+    } else {
+      setAuthError(true);
+    }
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdminAuthenticated(false);
+    sessionStorage.removeItem('admin_auth');
+    handleTabChange('vitrine');
+  };
+
   return (
     <div className="min-h-screen bg-vintage-cream flex flex-col justify-between selection:bg-vintage-terracotta/20 selection:text-vintage-wood">
       {/* Header */}
@@ -55,7 +83,56 @@ export const App: React.FC = () => {
       <div className="grow">
         {currentTab === 'vitrine' && <ShowcasePage />}
         {currentTab === 'contato' && <ContactPage />}
-        {currentTab === 'admin' && <AdminPage />}
+        
+        {currentTab === 'admin' && (
+          !isAdminAuthenticated ? (
+            <div className="min-h-[60vh] flex items-center justify-center p-4">
+              <form 
+                onSubmit={handleAdminLogin} 
+                className="bg-white p-8 rounded-2xl shadow-sm border border-vintage-sage/30 max-w-sm w-full space-y-4 text-center"
+              >
+                <div className="w-12 h-12 bg-vintage-terracotta/10 text-vintage-terracotta rounded-full flex items-center justify-center mx-auto mb-2">
+                  <Lock className="w-6 h-6" />
+                </div>
+                <h3 className="font-serif font-bold text-xl text-vintage-wood">Área Restrita</h3>
+                <p className="text-xs text-vintage-wood/60">Digite a senha para acessar o painel de cadastro de peças.</p>
+                
+                <input 
+                  type="password"
+                  placeholder="Senha de acesso"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  className="w-full px-4 py-2 text-sm border border-vintage-sage/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-vintage-terracotta bg-vintage-cream/30 text-vintage-wood"
+                  autoFocus
+                />
+
+                {authError && (
+                  <p className="text-xs text-red-500 font-medium">Senha incorreta. Tente novamente.</p>
+                )}
+
+                <button 
+                  type="submit"
+                  className="w-full py-2 bg-vintage-wood text-vintage-cream rounded-lg text-sm font-medium hover:bg-black transition duration-200"
+                >
+                  Entrar no Painel
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div>
+              <div className="bg-vintage-wood text-vintage-cream/80 px-4 py-2 flex justify-between items-center text-xs">
+                <span className="font-mono">Modo Administrador Ativo</span>
+                <button 
+                  onClick={handleAdminLogout}
+                  className="hover:text-vintage-terracotta underline font-medium"
+                >
+                  Sair do Admin
+                </button>
+              </div>
+              <AdminPage />
+            </div>
+          )
+        )}
       </div>
 
       {/* Floating WhatsApp Action Button */}
@@ -103,14 +180,6 @@ export const App: React.FC = () => {
                     className="hover:text-vintage-cream hover:underline"
                   >
                     Contato & WhatsApp
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => handleTabChange('admin')}
-                    className="hover:text-vintage-cream hover:underline"
-                  >
-                    Acesso Lojista (Painel Admin)
                   </button>
                 </li>
               </ul>
