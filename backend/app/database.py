@@ -64,65 +64,13 @@ engine = _primary_engine
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency yielding an async database session.
-    Automatically handles rollback on exception, session closure,
-    and falls back to SQLite if primary PostgreSQL is unreachable.
+    Automatically handles rollback on exception and session closure.
+    Does NOT trigger SQLite fallback on route-level exceptions.
     """
-    global _use_fallback, _active_engine
+    global _use_fallback, _fallback_engine, _primary_engine
 
+    # Se explicitamente estiver em fallback (definido no init_db)
     if _use_fallback:
-        maker = async_sessionmaker(
-            bind=_fallback_engine,
-            class_=AsyncSession,
-            expire_on_commit=False,
-            autocommit=False,
-            autoflush=False,
-        )
-        async with maker() as session:
-            try:
-                yield session
-            except Exception:
-                await session.rollback()
-                raise
-            finally:
-                await session.close()
-        return
-
-    # Attempt primary connection
-    maker = async_sessionmaker(
-        bind=_primary_engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-        autocommit=False,
-        autoflush=False,
-    )
-    try:
-        async with maker() as session:
-            # Probe connection vitality
-            await session.execute(text("SELECT 1"))
-            try:
-                yield session
-            except Exception:
-                await session.rollback()
-                raise
-            finally:
-                await session.close()
-    except Exception as exc:
-        logger.warning(
-            f"Conexão com PostgreSQL falhou ({exc}). "
-            f"Ativando fallback local para SQLite 'sqlite+aiosqlite:///brecho.db'."
-        )
-        _use_fallback = True
-        _active_engine = _fallback_engine
-
-        try:
-            from app.models import Product, Order
-        except ImportError:
-            from backend.app.models import Product, Order
-
-        # Ensure fallback schema exists
-        async with _fallback_engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-
         fallback_maker = async_sessionmaker(
             bind=_fallback_engine,
             class_=AsyncSession,
@@ -138,6 +86,24 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
                 raise
             finally:
                 await session.close()
+        return
+
+    # Conexão normal com o Supabase (PostgreSQL)
+    maker = async_sessionmaker(
+        bind=_primary_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False,
+    )
+    async with maker() as session:
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
 
 
 async def init_db() -> None:
