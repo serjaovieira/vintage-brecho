@@ -64,7 +64,9 @@ export interface ProductCreate {
   image_url: string;
 }
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_URL 
+  ? `${import.meta.env.VITE_API_URL}/api` 
+  : '/api';
 
 export class ApiError extends Error {
   status: number;
@@ -101,12 +103,15 @@ export const api = {
    * Fetches available products. Optionally filters by category.
    */
   async getProducts(category?: string): Promise<Product[]> {
-    const url = new URL(`${API_BASE}/products`, window.location.origin);
-    if (category && category !== 'Todas as Peças') {
-      url.searchParams.set('category', category);
-    }
-    const res = await fetch(url.toString());
-    return handleResponse<Product[]>(res);
+  const baseUrl = API_BASE.startsWith('http') 
+    ? API_BASE 
+    : `${window.location.origin}${API_BASE}`;
+  const url = new URL(`${baseUrl}/products`);
+  if (category && category !== 'Todas as Peças') {
+    url.searchParams.set('category', category);
+  }
+  const res = await fetch(url.toString());
+  return handleResponse<Product[]>(res);
   },
 
   /**
