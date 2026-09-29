@@ -25,6 +25,11 @@ export default {
         serif: ['Fraunces', 'Playfair Display', 'serif'],
         sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
       },
+      aspectRatio: {
+        '3/4': '3 / 4',
+        '4/3': '4 / 3',
+        '4/5': '4 / 5',
+      },
       boxShadow: {
         'vintage-soft': '0 4px 20px -2px rgba(92, 61, 46, 0.08)',
         'vintage-card': '0 2px 12px 0 rgba(99, 136, 117, 0.12)',

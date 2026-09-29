@@ -343,7 +343,10 @@ export const AdminPage: React.FC = () => {
             {/* Image Preview & Compression Metrics */}
             {compressionResult && (
               <div className="mt-4 pt-4 border-t border-vintage-sage/20 space-y-3">
-                <div className="relative w-full aspect-4/3 rounded-2xl overflow-hidden bg-vintage-cream-light border border-vintage-sage/30 shadow-inner">
+                <div
+                  className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-vintage-cream-light border border-vintage-sage/30 shadow-inner"
+                  style={{ aspectRatio: '4 / 3' }}
+                >
                   <img
                     src={compressionResult.dataUrl}
                     alt="Pré-visualização da Peça"

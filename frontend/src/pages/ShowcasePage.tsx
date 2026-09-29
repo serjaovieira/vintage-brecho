@@ -148,7 +148,10 @@ export const ShowcasePage: React.FC<ShowcasePageProps> = ({
                 key={n}
                 className="bg-white/80 rounded-2xl p-4 border border-vintage-sage/20 animate-pulse space-y-3"
               >
-                <div className="w-full aspect-3/4 bg-vintage-sage/10 rounded-xl" />
+                <div
+                  className="w-full aspect-[3/4] bg-vintage-sage/10 rounded-xl"
+                  style={{ aspectRatio: '3 / 4' }}
+                />
                 <div className="h-4 bg-vintage-sage/15 rounded-md w-3/4" />
                 <div className="h-3 bg-vintage-sage/10 rounded-md w-1/2" />
                 <div className="h-6 bg-vintage-terracotta/20 rounded-md w-1/3 pt-2" />

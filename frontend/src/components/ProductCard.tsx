@@ -25,10 +25,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <article className="group relative bg-white/90 backdrop-blur-xs rounded-2xl border border-vintage-sage/25 overflow-hidden shadow-vintage-soft hover:shadow-vintage-hover hover:border-vintage-sage/60 transition-all duration-300 flex flex-col justify-between">
-      {/* Top Image Container */}
+      {/* Top Image Container with Guaranteed 3:4 Ratio */}
       <div
         onClick={() => onViewDetails(product)}
-        className="relative w-full aspect-3/4 overflow-hidden bg-vintage-cream-light cursor-pointer"
+        className="relative w-full aspect-[3/4] overflow-hidden bg-vintage-cream-light cursor-pointer shrink-0"
+        style={{ aspectRatio: '3 / 4' }}
       >
         {/* Placeholder / Skeleton while loading */}
         {!imageLoaded && (
@@ -42,19 +43,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           alt={product.title}
           loading="lazy"
           onLoad={() => setImageLoaded(true)}
-          className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out ${
+          className={`w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out ${
             imageLoaded ? 'opacity-100' : 'opacity-0'
           }`}
         />
 
         {/* 1-of-1 Exclusivity Badge */}
-        <div className="absolute top-3 left-3 bg-vintage-wood/90 backdrop-blur-xs text-vintage-cream text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
+        <div className="absolute top-2.5 left-2.5 bg-vintage-wood/90 backdrop-blur-xs text-vintage-cream text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-sm flex items-center gap-1 z-10">
           <Sparkles className="w-3 h-3 text-vintage-terracotta" />
           <span>Peça 1-of-1</span>
         </div>
 
         {/* Size Badge */}
-        <div className="absolute top-3 right-3 bg-vintage-sage text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
+        <div className="absolute top-2.5 right-2.5 bg-vintage-sage text-white text-[11px] sm:text-xs font-bold px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-sm z-10">
           Tam {product.size}
         </div>
 
@@ -68,39 +69,43 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       </div>
 
       {/* Product Content Details */}
-      <div className="p-4 sm:p-5 flex flex-col grow justify-between">
+      <div className="p-3.5 sm:p-4 flex flex-col grow justify-between">
         <div>
-          <span className="text-[11px] font-semibold text-vintage-sage tracking-wider uppercase block mb-1">
+          <span className="text-[10px] sm:text-[11px] font-bold text-vintage-sage tracking-wider uppercase block mb-1 truncate">
             {product.category}
           </span>
 
           <h3
             onClick={() => onViewDetails(product)}
-            className="font-serif text-lg font-bold text-vintage-wood hover:text-vintage-terracotta transition-colors line-clamp-1 cursor-pointer leading-snug"
+            className="font-serif text-base sm:text-lg font-bold text-vintage-wood hover:text-vintage-terracotta transition-colors line-clamp-1 cursor-pointer leading-snug"
             title={product.title}
           >
             {product.title}
           </h3>
 
-          {product.description && (
-            <p className="mt-1 text-xs text-vintage-text/75 line-clamp-2 leading-relaxed">
+          {product.description ? (
+            <p className="mt-1 text-xs text-vintage-text/75 line-clamp-1 leading-relaxed">
               {product.description}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-vintage-text/45 italic line-clamp-1">
+              Peça única vintage
             </p>
           )}
         </div>
 
         {/* Price & Action Row */}
-        <div className="mt-4 pt-3 border-t border-vintage-sage/15 flex items-center justify-between gap-2">
-          <div>
-            <span className="text-[10px] text-vintage-text/60 uppercase tracking-wider block">
+        <div className="mt-3 pt-2.5 border-t border-vintage-sage/15 flex items-center justify-between gap-1.5">
+          <div className="min-w-0 shrink">
+            <span className="text-[9px] sm:text-[10px] text-vintage-text/60 uppercase tracking-wider block font-medium">
               Valor da Peça
             </span>
-            <span className="font-serif text-xl sm:text-2xl font-bold text-vintage-terracotta">
+            <span className="font-serif text-base sm:text-lg lg:text-xl font-bold text-vintage-terracotta leading-tight truncate block">
               {formattedPrice}
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             {onAddToCart && (
               <button
                 type="button"
@@ -108,7 +113,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   e.stopPropagation();
                   onAddToCart(product);
                 }}
-                className={`p-2 sm:px-3 sm:py-2 rounded-xl border text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                className={`py-1.5 px-2.5 sm:px-3 rounded-xl border text-[11px] sm:text-xs font-semibold transition-all flex items-center gap-1 shrink-0 ${
                   isInCart
                     ? 'bg-vintage-sage/20 border-vintage-sage text-vintage-sage'
                     : 'border-vintage-sage/40 hover:border-vintage-sage bg-white text-vintage-wood hover:bg-vintage-sage/10'
@@ -116,17 +121,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 title={isInCart ? 'Peça já está na sacola' : 'Adicionar à Sacola'}
                 aria-label={isInCart ? 'Peça já está na sacola' : 'Adicionar à Sacola'}
               >
-                {isInCart ? <Check className="w-4 h-4 text-vintage-sage" /> : <ShoppingBag className="w-4 h-4" />}
-                <span className="hidden sm:inline">{isInCart ? 'Na Sacola' : 'Sacola'}</span>
+                {isInCart ? <Check className="w-3.5 h-3.5 text-vintage-sage" /> : <ShoppingBag className="w-3.5 h-3.5" />}
+                <span>{isInCart ? 'Na Sacola' : 'Sacola'}</span>
               </button>
             )}
 
             <button
               onClick={() => onBuyNow(product)}
-              className="px-3.5 py-2 rounded-xl bg-vintage-terracotta hover:bg-vintage-terracotta-dark text-white text-xs font-bold shadow-sm transition-colors flex items-center gap-1.5"
+              className="py-1.5 px-2.5 sm:px-3 rounded-xl bg-vintage-terracotta hover:bg-vintage-terracotta-dark text-white text-[11px] sm:text-xs font-bold shadow-xs transition-colors flex items-center gap-1 shrink-0 active:scale-98"
               title="Comprar com PIX"
             >
-              <QrCode className="w-4 h-4" />
+              <QrCode className="w-3.5 h-3.5" />
               <span>PIX</span>
             </button>
           </div>
